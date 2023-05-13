@@ -1,29 +1,11 @@
 import "./Booking.css"
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
-
-const movies = [
-    {
-        name: 'Avenger',
-        price: 10,
-        occupied: [20, 21, 30, 1, 2, 8],
-    },
-    {
-        name: 'Joker',
-        price: 12,
-        occupied: [9, 41, 35, 11, 65, 26],
-    },
-    {
-        name: 'Toy story',
-        price: 8,
-        occupied: [37, 25, 44, 13, 2, 3],
-    },
-    {
-        name: 'the lion king',
-        price: 9,
-        occupied: [10, 12, 50, 33, 28, 47],
-    },
-]
+import { getMovie } from '../../api/movie'
+import { getAllTheaters, getTheaterById } from '../../api/theater'
+import Navbar from '../../components/Navbar/Navbar'
+import Payment from "../../components/Payment/Payment"
 
 const seats = Array.from({ length: 8 * 8 }, (_, i) => i)
 
@@ -35,38 +17,90 @@ const Booking = () => {
      * 3. Get the booked seats
      * 4. 
      */
-    const [selectedMovie, setSelectedMovie] = useState(movies[0])
+    const { movieid: movieId } = useParams()
+    const { theatreid: theatreId } = useParams()
+    const [pageLoaded, setPageLoading] = useState(false);
+
+    const [selectedMovieId, setSelectedMovieId] = useState(movieId);
+    const [selectedTheaterId, setTheaterMovieId] = useState(theatreId);
+
+    const [selectedMovie, setSelectedMovie] = useState({})
+    const [selectedTheater, setSelectedTheater] = useState({})
+
     const [selectedSeats, setSelectedSeats] = useState([])
+    const [occupiedSeats, setOccupiedSeats] = useState([10, 12, 50, 33, 28, 47])
+    const [moviePrice, setMoviePrice] = useState(150)
+
+    const navigate = useNavigate();
+
+    const init = async () => {
+        try {
+            await getAllTheaters()
+        } catch (error) {
+            navigate('/login')
+        }
+        const response = await getMovie(selectedMovieId);
+        setSelectedMovie(response.data);
+
+        const theaterResponse = await getTheaterById(selectedTheaterId);
+        setSelectedTheater(theaterResponse.data);
+        console.log("theatreId", selectedTheaterId)
+
+        setPageLoading(true)
+    }
+    useEffect(() => {
+        console.log(localStorage.getItem('token'));
+        init()
+    }, [])
+
+
+    const render = () => {
+        return (
+            <>
+
+                <div className="App bg-black backg">
+
+                    <h2 className="fw-bold text-light">{selectedMovie.name}</h2>
+                    <ShowCase />
+                    <Cinema
+                        movie={selectedMovie}
+                        selectedSeats={selectedSeats}
+                        occupiedSeats={occupiedSeats}
+                        onSelectedSeatsChange={selectedSeats => setSelectedSeats(selectedSeats)}
+                    />
+
+                    <p className="info">
+                        You have selected <span className="count">{selectedSeats.length}</span>{' '}
+                        seats for the price of{' '}
+                        <span className="total">
+                            ${selectedSeats.length * moviePrice}
+                        </span>
+
+                    </p>
+                    <Payment
+                        noOfSeats={selectedSeats.length}
+                        movie={selectedMovie}
+                        theatre={selectedTheater}
+                    />
+                </div>
+
+            </>
+        )
+    }
 
     return (
         <>
-
+            <Navbar />
             <div className="App bg-black backg">
-
-                <h2 className="fw-bold text-light">{selectedMovie.name}</h2>
-                <ShowCase />
-                <Cinema
-                    movie={selectedMovie}
-                    selectedSeats={selectedSeats}
-                    onSelectedSeatsChange={selectedSeats => setSelectedSeats(selectedSeats)}
-                />
-
-                <p className="info">
-                    You have selected <span className="count">{selectedSeats.length}</span>{' '}
-                    seats for the price of{' '}
-                    <span className="total">
-                        ${selectedSeats.length * selectedMovie.price}
-                    </span>
-
-                </p>
-                <button className='btn btn-danger'>Confirm Payment</button>
-
+                {
+                    pageLoaded ? render() : "Loading data ..."
+                }
             </div>
         </>
     )
 }
 
-function Cinema({ movie, selectedSeats, onSelectedSeatsChange }) {
+function Cinema({ selectedSeats, onSelectedSeatsChange, occupiedSeats }) {
     function handleSelectedState(seat) {
         const isSelected = selectedSeats.includes(seat)
         if (isSelected) {
@@ -85,7 +119,7 @@ function Cinema({ movie, selectedSeats, onSelectedSeatsChange }) {
             <div className="seats">
                 {seats.map(seat => {
                     const isSelected = selectedSeats.includes(seat)
-                    const isOccupied = movie.occupied.includes(seat)
+                    const isOccupied = occupiedSeats.includes(seat)
                     return (
                         <span
                             tabIndex="0"
@@ -117,7 +151,7 @@ function ShowCase() {
     return (
         <ul className="ShowCase">
             <li>
-                <span className="seat" /> <small>N/A</small>
+                <span className="seat" /> <small>Available</small>
             </li>
             <li>
                 <span className="seat selected" /> <small>Selected</small>
