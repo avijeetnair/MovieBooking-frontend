@@ -29,7 +29,7 @@ const Login = () => {
             name: userSignupData.username,
             userId: userSignupData.userId,
             email: userSignupData.email,
-            userType: userType,//check
+            userType: userType,
             password: userSignupData.password
         }
 
